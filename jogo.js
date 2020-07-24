@@ -7,7 +7,7 @@ sprites.src = './sprites.png';
 
 const canvas = document.querySelector('canvas');
 const contexto = canvas.getContext('2d');
-
+let frames = 0;
 
 const planoDeFundo = {
   spriteX: 390,
@@ -39,32 +39,47 @@ const planoDeFundo = {
 
 };
 
-const chao = {
-  spriteX: 0,
-  spriteY: 610,
-  largura: 224,
-  altura: 112,
-  x: 0,
-  y: canvas.height - 112,
-  desenhar() {
-    contexto.drawImage(
-      sprites,
-      chao.spriteX, chao.spriteY,
-      chao.largura, chao.altura,
-      chao.x, chao.y,
-      chao.largura, chao.altura
-    );
+function criarChao() {
+  const chao = {
+    spriteX: 0,
+    spriteY: 610,
+    largura: 224,
+    altura: 112,
+    x: 0,
+    y: canvas.height - 112,
+    atualizar() {
+      const movimentoDoChao = 1;
+      const repeteEm = chao.largura / 2 ;
+      const movimentacao = chao.x - movimentoDoChao;
 
-    contexto.drawImage(
-      sprites,
-      chao.spriteX, chao.spriteY,
-      chao.largura, chao.altura,
-      (chao.x + chao.largura), chao.y,
-      chao.largura, chao.altura
-    );
-  }
+      // console.log('[chao.x]', chao.x);
+      // console.log('[repeteEm]', repeteEm);
+      // console.log('[movimentacao]', movimentacao % repeteEm);
 
-};
+      chao.x = movimentacao % repeteEm;
+
+    },
+    desenhar() {
+      contexto.drawImage(
+        sprites,
+        chao.spriteX, chao.spriteY,
+        chao.largura, chao.altura,
+        chao.x, chao.y,
+        chao.largura, chao.altura
+      );
+  
+      contexto.drawImage(
+        sprites,
+        chao.spriteX, chao.spriteY,
+        chao.largura, chao.altura,
+        (chao.x + chao.largura), chao.y,
+        chao.largura, chao.altura
+      );
+    }
+  
+  };
+  return chao;  
+}
 
 function fazColisao(flappyBird, chao) {
   const flappyBirdY = flappyBird.y + flappyBird.altura;
@@ -88,7 +103,7 @@ function criarFlappyBird() {
     gravidade: 0.25,
     velocidade: 0,
     atualizar() {
-      if(fazColisao(flappyBird, chao)) {
+      if(fazColisao(flappyBird, globais.chao)) {
         som_HIT.play();
         setTimeout(() => {
           mudarTela(Telas.INICIO);
@@ -102,10 +117,30 @@ function criarFlappyBird() {
     pular() {
       flappyBird.velocidade = - flappyBird.pulo;
     },
+    movimentos: [
+      {spriteX: 0, spriteY: 0},
+      {spriteX: 0, spriteY: 26},
+      {spriteX: 0, spriteY: 52}
+    ],
+    frameAtual: 0,
+    atuarlizarFrameAtual() {
+      const intervaloDeFrames = 10;
+      const passouOIntervalo = frames % intervaloDeFrames === 0;
+
+      if(passouOIntervalo){
+        const baseDoIncremento = 1;
+        const incremento = baseDoIncremento + flappyBird.frameAtual;
+        const baseRepeticao = flappyBird.movimentos.length;
+        flappyBird.frameAtual = incremento % baseRepeticao;
+      }
+    },
+
     desenhar() {
+      flappyBird.atuarlizarFrameAtual();
+      const { spriteX, spriteY } = flappyBird.movimentos[flappyBird.frameAtual];
       contexto.drawImage(
         sprites,
-        flappyBird.spriteX, flappyBird.spriteY,
+        spriteX, spriteY,
         flappyBird.largura, flappyBird.altura,
         flappyBird.x, flappyBird.y,
         flappyBird.largura, flappyBird.altura
@@ -149,11 +184,12 @@ const Telas = {
   INICIO: {
     inicializa() {
       globais.flappyBird = criarFlappyBird();
+      globais.chao = criarChao();
     },
 
     desenhar() {
       planoDeFundo.desenhar();
-      chao.desenhar();
+      globais.chao.desenhar();
       globais.flappyBird.desenhar();
       mensagemGetReady.desenhar();
     },
@@ -161,7 +197,7 @@ const Telas = {
       mudarTela(Telas.JOGO);
     },
     atualizar() {
-
+      globais.chao.atualizar();
     }
   }
 };
@@ -169,7 +205,7 @@ const Telas = {
 Telas.JOGO = {
   desenhar() {
     planoDeFundo.desenhar();
-    chao.desenhar();
+    globais.chao.desenhar();
     globais.flappyBird.desenhar();
   },
   click() {
@@ -184,8 +220,8 @@ Telas.JOGO = {
 function loop() {
   telaAtiva.desenhar();
   telaAtiva.atualizar();
+  frames = frames +1;
   requestAnimationFrame(loop);
-
 }
 
 window.addEventListener('click', function(){
